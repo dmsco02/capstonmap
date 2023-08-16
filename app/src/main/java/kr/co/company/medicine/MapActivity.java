@@ -60,10 +60,16 @@ public class MapActivity extends AppCompatActivity {
 
                 //이 단계에서는 화면의 MapFragment에 구글맵 화면이 보여지게 되고 구글맵 객체를 사용할수 있으므로 매개변수로 전달된 구글맵 객체를 멤버변수로 저장시킨다.
                 gmap = googleMap;
+
+                //시작 위치 설정하는 방법
+                LatLng sp = new LatLng(37.55894558798571, 127.04941379690118);
+                CameraUpdate startPoint = CameraUpdateFactory.newLatLngZoom(sp,15.0f);
+                gmap.animateCamera(startPoint);
             }
         });
 
         //지도 사용시 예전 스마트폰에서 오류가 발생할수 있으므로 예방차원에서 아래와 같은 초기화 작업을 해준다.
+
         MapsInitializer.initialize(MapActivity.this);
 
         //현재의 위치정보 얻어오기
@@ -123,8 +129,6 @@ public class MapActivity extends AppCompatActivity {
                         //Marker를 add하게 되면 위치가 갱신될때마다 Marker가 중복해서 지도상에 추가되므로 주의한다.
                         mo.position(new LatLng(37.55894558798571, 127.04941379690118));
                     }
-
-
                 }
 
                 @Override
@@ -146,6 +150,27 @@ public class MapActivity extends AppCompatActivity {
         } else {
             Toast.makeText(MapActivity.this, "사용자로 부터 ACCESS_FINE_LOCATION 권한 승인을 받지 못함."
                     , Toast.LENGTH_LONG).show();
+            if (mo == null) {
+                //지도상에 표시될 아이콘의 각종 정보(장소명, 아이콘 이미지파일, 위치등)를 설정한다.
+                mo = new MarkerOptions();
+                mo.title("약국");
+                mo.snippet("위치정보");
+                //icon 메소드의 매개변수형은 BitmapDescriptor형이므로 리소스의 id값을 곧바로 설정할수 없으므로
+                //BitmapDescriptorFactory 클래스의 fromResource 메소드를 사용하여 리소스의 id값을
+                //BitmapDescriptor형으로 변환하여 사용한다.
+                mo.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker));
+
+                mo.position(new LatLng(37.55894558798571, 127.04941379690118 ));
+
+                gmap.addMarker(mo); //동일한 Marker가 null인 경우에만 add해준다. (매우 중요)
+            } else {
+
+                //이미 동일한 Marker가 존재하는 경우에는 GPS 위치가 변함에 따라서 기존 Marker의 위치값만
+                //변경처리 해주면 된다. 그러면 기존의 Marker의 위치값만 갱신되어 지도에 표시된다.
+                //만약, if else문으로 처리하지 않고, 즉, Marker가 이미 생성되었는지 확인하지 않고
+                //Marker를 add하게 되면 위치가 갱신될때마다 Marker가 중복해서 지도상에 추가되므로 주의한다.
+                mo.position(new LatLng(37.55894558798571, 127.04941379690118));
+            }
         }
 
 

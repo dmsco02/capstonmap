@@ -2,6 +2,7 @@ package kr.co.company.medicine;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.annotation.SuppressLint;
@@ -31,6 +32,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import android.Manifest;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,24 +57,35 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-// 권한ID를 가져옵니다
-        int permission = ContextCompat.checkSelfPermission(this,Manifest.permission.INTERNET);
-
+//// 권한ID를 가져옵니다
+//        int permission = ContextCompat.checkSelfPermission(this,Manifest.permission.INTERNET);
+//
+//        int permission2 = ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION);
+//
+//        int permission3 = ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION);
+//
+//        // 권한이 열려있는지 확인
+//        if (permission == PackageManager.PERMISSION_DENIED || permission2 == PackageManager.PERMISSION_DENIED || permission3 == PackageManager.PERMISSION_DENIED) {
+//            // 마쉬멜로우 이상버전부터 권한을 물어본다
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//                // 권한 체크(READ_PHONE_STATE의 requestCode를 1000으로 세팅
+//                requestPermissions(
+//                        new String[]{Manifest.permission.INTERNET, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+//                        1000);
+//            }
+////            return;
+//        }
         int permission2 = ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION);
-
-        int permission3 = ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION);
-
-        // 권한이 열려있는지 확인
-        if (permission == PackageManager.PERMISSION_DENIED || permission2 == PackageManager.PERMISSION_DENIED || permission3 == PackageManager.PERMISSION_DENIED) {
-            // 마쉬멜로우 이상버전부터 권한을 물어본다
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                // 권한 체크(READ_PHONE_STATE의 requestCode를 1000으로 세팅
-                requestPermissions(
-                        new String[]{Manifest.permission.INTERNET, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                        1000);
-            }
-            return;
+        if (permission2 == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(MainActivity.this,"이미 권한이 부여되어 있음.", Toast.LENGTH_LONG).show();
         }
+        else{
+            Toast.makeText(MainActivity.this,"권한을 설정해야함.", Toast.LENGTH_LONG).show();
+            String[] need_perm = new String[] {android.Manifest.permission.ACCESS_FINE_LOCATION};
+            ActivityCompat.requestPermissions(MainActivity.this, need_perm, 777);
+
+        }
+
 
         Button Button_add = findViewById(R.id.button);
         TextView medView1 = findViewById(R.id.medView1);
@@ -138,21 +151,19 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode == 1000) {
-            boolean check_result = true;
-
-            // 모든 퍼미션을 허용했는지 체크
-            for (int result : grantResults) {
-                if (result != PackageManager.PERMISSION_GRANTED) {
-                    check_result = false;
-                    break;
+        if (requestCode == 777) {
+            if(grantResults.length > 0){
+                if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    Toast.makeText(MainActivity.this,"사용자가 권한을 승인함.", Toast.LENGTH_LONG).show();
+                }
+                else{
+                    Toast.makeText(MainActivity.this,"사용자가 권한을 거부함.", Toast.LENGTH_LONG).show();
                 }
             }
-
-            // 권한 체크에 동의를 하지 않으면 안드로이드 종료
-            if (check_result == false) {
-                finish();
+            else{
+                Toast.makeText(MainActivity.this,"권한설정 여부에 대한 결과정보가 존재하지 않음.", Toast.LENGTH_LONG).show();
             }
+
         }
     }
 }
