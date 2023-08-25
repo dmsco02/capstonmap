@@ -49,4 +49,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
     implementation 'com.google.android.gms:play-services-maps:18.1.0'
+
+    implementation 'org.apache.poi:poi:3.9' //엑셀파일 처리 라이브러리. .xls등 엑셀 구버전 파일만 가능
 }

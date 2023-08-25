@@ -1,21 +1,25 @@
 package kr.co.company.medicine;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdate;
@@ -26,24 +30,113 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import net.daum.mf.map.api.MapPOIItem;
-import net.daum.mf.map.api.MapPoint;
-import net.daum.mf.map.api.MapView;
-import net.daum.mf.map.api.MapView;
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
 
-public class MapActivity extends AppCompatActivity {
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+
+public class MapActivity extends AppCompatActivity implements GoogleMap.InfoWindowAdapter { //InfoWindowAdapter는 GoogleMap 클래스의 내부 인터페이스
     SupportMapFragment smf;
 
     GoogleMap gmap;
 
-    MarkerOptions mo;
+    MarkerOptions [] mo;
+
+    private ArrayList<ArrayList<String>> mGroupList = null;
+    private ArrayList<String> mChildList = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+
+
+
+
+        //약국 위치정보(phar_xy.xls) 읽어서 ArrayList로 만들기
+        mGroupList = new ArrayList<ArrayList<String>>();
+
+        try {
+            InputStream myInput;
+            // initialize asset manager
+            AssetManager assetManager = getAssets();
+            //  open excel sheet
+            myInput = assetManager.open("phar_xy_phone_addr.xls");
+            // Create a POI File System object
+            POIFSFileSystem myFileSystem = new POIFSFileSystem(myInput);
+            // Create a workbook using the File System
+            HSSFWorkbook myWorkBook = new HSSFWorkbook(myFileSystem);
+            // Get the first sheet from workbook
+            HSSFSheet mySheet = myWorkBook.getSheetAt(0);
+            // We now need something to iterate through the cells.
+            Iterator<Row> rowIter = mySheet.rowIterator();
+            int rowno =0;
+
+            while (rowIter.hasNext()) {
+                //Log.e("geem", " row no "+ rowno );
+                HSSFRow myRow = (HSSFRow) rowIter.next(); //헤더(1번째줄) 건너뛰기
+                if(rowno !=0) {
+                    Iterator<Cell> cellIter = myRow.cellIterator();
+                    int colno =0;
+                    String name="", lat="", lng="", phone="", addr="";
+                    while (cellIter.hasNext()) {
+                        HSSFCell myCell = (HSSFCell) cellIter.next();
+                        if (colno==0){
+                            name = myCell.toString();
+                        }else if (colno==1){
+                            lat = myCell.toString();
+                        }else if (colno==2){
+                            lng = myCell.toString();
+                        }else if (colno==3){
+                            phone = myCell.toString();
+                        }else if (colno==4){
+                            addr = myCell.toString();
+                        }
+                        colno++;
+                        //Log.e("geem", " Index :" + myCell.getColumnIndex() + " -- " + myCell.toString());
+                    }
+
+                    mChildList = new ArrayList<String>();
+                    mChildList.add(name);
+                    mChildList.add(lat);
+                    mChildList.add(lng);
+                    mChildList.add(phone + "\n" + addr);
+                    mGroupList.add(mChildList);
+                }
+                rowno++;
+            }
+        } catch (Exception e) {
+            Log.e("geem", "error "+ e.toString());
+        }
+
+
+        /*
+        //완성된 ArrayList<ArrayList<String>> 출력
+        for(int i=0 ; i<mGroupList.size() ; i++){
+            Log.d("array",  "" + i);
+
+            for(int j=0 ; j<mChildList.size() ; j++){
+                Log.d("array",  "" + mGroupList.get(i).get(j));
+            }
+        }
+        */
+
+        //약국 숫자만큼 mo 배열 만들기
+        mo = new MarkerOptions[mGroupList.size()];
+
+
+
+
 
 
 
@@ -61,16 +154,40 @@ public class MapActivity extends AppCompatActivity {
                 //이 단계에서는 화면의 MapFragment에 구글맵 화면이 보여지게 되고 구글맵 객체를 사용할수 있으므로 매개변수로 전달된 구글맵 객체를 멤버변수로 저장시킨다.
                 gmap = googleMap;
 
+                //구글맵에 커스텀 마커뷰 적용
+                gmap.setInfoWindowAdapter(MapActivity.this);
+
                 //시작 위치 설정하는 방법
                 LatLng sp = new LatLng(37.55894558798571, 127.04941379690118);
                 CameraUpdate startPoint = CameraUpdateFactory.newLatLngZoom(sp,15.0f);
                 gmap.animateCamera(startPoint);
+
+                //약국 위치 마커 표시하기.
+                for(int i=0 ; i<mGroupList.size() ; i++) { //약국 갯수만큼 반복
+                    if (mo[i] == null) {
+                        //Log.d("array",  "" + mGroupList.get(i).get(j));
+                        //지도상에 표시될 아이콘의 각종 정보(장소명, 아이콘 이미지파일, 위치등)를 설정한다.
+                        mo[i] = new MarkerOptions();
+                        mo[i].title(mGroupList.get(i).get(0));
+                        mo[i].snippet(mGroupList.get(i).get(3));
+                        //icon 메소드의 매개변수형은 BitmapDescriptor형이므로 리소스의 id값을 곧바로 설정할수 없으므로
+                        //BitmapDescriptorFactory 클래스의 fromResource 메소드를 사용하여 리소스의 id값을
+                        //BitmapDescriptor형으로 변환하여 사용한다.
+                        mo[i].icon(BitmapDescriptorFactory.fromResource(R.drawable.marker2));
+
+                        mo[i].position(new LatLng(Double.parseDouble(mGroupList.get(i).get(1)), Double.parseDouble(mGroupList.get(i).get(2))));
+
+                        gmap.addMarker(mo[i]); //동일한 Marker가 null인 경우에만 add해준다. (매우 중요)
+                    } else {
+                        mo[i].position(new LatLng(Double.parseDouble(mGroupList.get(i).get(1)), Double.parseDouble(mGroupList.get(i).get(2))));
+                    }
+                }
             }
         });
 
         //지도 사용시 예전 스마트폰에서 오류가 발생할수 있으므로 예방차원에서 아래와 같은 초기화 작업을 해준다.
-
         MapsInitializer.initialize(MapActivity.this);
+
 
         //현재의 위치정보 얻어오기
         LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
@@ -81,53 +198,15 @@ public class MapActivity extends AppCompatActivity {
 
         int perm = ContextCompat.checkSelfPermission(MapActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
 
-        if(perm == PackageManager.PERMISSION_GRANTED) {
+        if(perm == PackageManager.PERMISSION_GRANTED) { //권한을 허용하면 지도 우측상단에 표적 아이콘이 나타나고
+                                                        //권한을 허용하지 않으면 나타나지 않는다.
+                                                        //표적 아이콘을 클릭하면 현재의 내위치로 카메라 위치가 이동한다.
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 0.0f, new LocationListener() {
                 @Override
                 public void onLocationChanged(Location location) {
-
-                    double lat = location.getLatitude();
-                    double lon = location.getLongitude();
-
-                    LatLng point = new LatLng(lat, lon);   //LatLng은 위도와 경도 위치값을 저장하는 벡터 자료형 클래스임.
-
-
-                    //지도를 바라보는 카메라 정보(위치, 줌) 설정
-                    CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(point, 15.0f);  //2번째 매개변수는 줌 배율.
-
-                    //구글맵 객체에 카메라 정보(위치, 줌) 설정하기.
-                    //즉, 카메라의 위치와 줌값으로 구글맵이 animate된다.
-                    gmap.animateCamera(cu);
-
-                    //아이콘으로 위치 표시하기.
-                    //1. 구글맵의 카메라 위치 가운데에 아이콘 표시하기. (강좌에서는 onResume에서 이작업을 해줬으나
-                    //    굳이 onResume에서 해줄 이유를 모르겠음. 이 위치에서 작업하는것이 보다 안정적임.)
                     if(gmap != null) {
-                        gmap.setMyLocationEnabled(true);   //구글맵 자체의 기능으로서, 카메라 위치로 설정한 위치에 아이콘 표시를 해준다.
-                    }
-                    //2. 구글맵의 특정 위치에 아이콘 표시하기.
-                    //Marker는 한번 추가하면 계속해서 지도에 표시가 되는 방식이므로 같은 위치의 동일한 Marker가 중복해서
-                    //지도에 add되지 않도록 주의해야 한다. 따라서, 아래와 같이 if문을 사용해야만 한다.
-                    if (mo == null) {
-                        //지도상에 표시될 아이콘의 각종 정보(장소명, 아이콘 이미지파일, 위치등)를 설정한다.
-                        mo = new MarkerOptions();
-                        mo.title("약국");
-                        mo.snippet("위치정보");
-                        //icon 메소드의 매개변수형은 BitmapDescriptor형이므로 리소스의 id값을 곧바로 설정할수 없으므로
-                        //BitmapDescriptorFactory 클래스의 fromResource 메소드를 사용하여 리소스의 id값을
-                        //BitmapDescriptor형으로 변환하여 사용한다.
-                        mo.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker));
-
-                        mo.position(new LatLng(37.55894558798571, 127.04941379690118 ));
-
-                        gmap.addMarker(mo); //동일한 Marker가 null인 경우에만 add해준다. (매우 중요)
-                    } else {
-
-                        //이미 동일한 Marker가 존재하는 경우에는 GPS 위치가 변함에 따라서 기존 Marker의 위치값만
-                        //변경처리 해주면 된다. 그러면 기존의 Marker의 위치값만 갱신되어 지도에 표시된다.
-                        //만약, if else문으로 처리하지 않고, 즉, Marker가 이미 생성되었는지 확인하지 않고
-                        //Marker를 add하게 되면 위치가 갱신될때마다 Marker가 중복해서 지도상에 추가되므로 주의한다.
-                        mo.position(new LatLng(37.55894558798571, 127.04941379690118));
+                        gmap.setMyLocationEnabled(true);   //구글맵 자체의 기능으로서, 지도 우측상단에 표적 아이콘이 나타난다.
+                                                           //따라서, 표적 아이콘을 클릭하여 현재의 내 위치로 이동할수 있게된다.
                     }
                 }
 
@@ -150,31 +229,54 @@ public class MapActivity extends AppCompatActivity {
         } else {
             Toast.makeText(MapActivity.this, "사용자로 부터 ACCESS_FINE_LOCATION 권한 승인을 받지 못함."
                     , Toast.LENGTH_LONG).show();
-            if (mo == null) {
-                //지도상에 표시될 아이콘의 각종 정보(장소명, 아이콘 이미지파일, 위치등)를 설정한다.
-                mo = new MarkerOptions();
-                mo.title("약국");
-                mo.snippet("위치정보");
-                //icon 메소드의 매개변수형은 BitmapDescriptor형이므로 리소스의 id값을 곧바로 설정할수 없으므로
-                //BitmapDescriptorFactory 클래스의 fromResource 메소드를 사용하여 리소스의 id값을
-                //BitmapDescriptor형으로 변환하여 사용한다.
-                mo.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker));
-
-                mo.position(new LatLng(37.55894558798571, 127.04941379690118 ));
-
-                gmap.addMarker(mo); //동일한 Marker가 null인 경우에만 add해준다. (매우 중요)
-            } else {
-
-                //이미 동일한 Marker가 존재하는 경우에는 GPS 위치가 변함에 따라서 기존 Marker의 위치값만
-                //변경처리 해주면 된다. 그러면 기존의 Marker의 위치값만 갱신되어 지도에 표시된다.
-                //만약, if else문으로 처리하지 않고, 즉, Marker가 이미 생성되었는지 확인하지 않고
-                //Marker를 add하게 되면 위치가 갱신될때마다 Marker가 중복해서 지도상에 추가되므로 주의한다.
-                mo.position(new LatLng(37.55894558798571, 127.04941379690118));
-            }
+            //구글맵 자체의 기능으로서, 지도 우측상단에 표적 아이콘이 나타나지 않는다.
+            //따라서, 표적 아이콘을 클릭할수 없으므로 현재의 내 위치로 이동할수 없게된다.
         }
 
 
+
     }
+
+
+    @Nullable
+    @Override
+    public View getInfoContents(@NonNull Marker marker) {
+        Context context = getApplicationContext(); //or getActivity(), YourActivity.this, etc.
+
+        //마커 뷰 레이아웃 구성하기.
+        LinearLayout info = new LinearLayout(context);
+        info.setOrientation(LinearLayout.VERTICAL);
+
+        //마커 타이틀
+        TextView title = new TextView(context);
+        title.setTextColor(Color.RED);
+        title.setTextSize(20.0f);
+        title.setGravity(Gravity.CENTER);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setText(marker.getTitle());
+
+        //마커 스니펫
+        TextView snippet = new TextView(context);
+        snippet.setTextColor(Color.BLUE);
+        snippet.setGravity(Gravity.CENTER);
+        snippet.setText(marker.getSnippet());
+
+        info.addView(title);
+        info.addView(snippet);
+
+        //완성된 마커 뷰 리턴
+        return info;
+    }
+
+    @Nullable
+    @Override
+    public View getInfoWindow(@NonNull Marker marker) {
+        return null;
+    }
+
+
+
+
 
 
 
