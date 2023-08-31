@@ -18,6 +18,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -55,12 +56,21 @@ public class MapActivity extends AppCompatActivity implements GoogleMap.InfoWind
     private ArrayList<ArrayList<String>> mGroupList = null;
     private ArrayList<String> mChildList = null;
 
+    Button bt;
+    CameraUpdate cu;
+    int perm;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_map);
+
+        //지도 영역밖에 내위치로 이동하기 버튼 구성
+        //setContentView(R.layout.activity_map);
+        //지도 영역내에 내위치로 이동하기 버튼 구성
+        setContentView(R.layout.activity_map2);
 
 
+        bt = findViewById(R.id.button3);
 
 
         //약국 위치정보(phar_xy.xls) 읽어서 ArrayList로 만들기
@@ -192,22 +202,34 @@ public class MapActivity extends AppCompatActivity implements GoogleMap.InfoWind
         //현재의 위치정보 얻어오기
         LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
 
+        perm = ContextCompat.checkSelfPermission(MapActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
 
-        //Ex93처럼 위험권한에 대해 명시적으로 체크하는 코드를 작성하라는 경고의 의미로 빨간줄이 생겼지만
-        //이미 위험권한에 대한 작업처리를 완료하였으므로 아래의 빨간줄은 그냥 무시하면 됨.
-
-        int perm = ContextCompat.checkSelfPermission(MapActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
-
-        if(perm == PackageManager.PERMISSION_GRANTED) { //권한을 허용하면 지도 우측상단에 표적 아이콘이 나타나고
-                                                        //권한을 허용하지 않으면 나타나지 않는다.
-                                                        //표적 아이콘을 클릭하면 현재의 내위치로 카메라 위치가 이동한다.
-            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 0.0f, new LocationListener() {
+        if(perm == PackageManager.PERMISSION_GRANTED) {
+            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0.0f, new LocationListener() {
                 @Override
                 public void onLocationChanged(Location location) {
-                    if(gmap != null) {
-                        gmap.setMyLocationEnabled(true);   //구글맵 자체의 기능으로서, 지도 우측상단에 표적 아이콘이 나타난다.
-                                                           //따라서, 표적 아이콘을 클릭하여 현재의 내 위치로 이동할수 있게된다.
+
+                    Log.d("Hello", "NETWORK PROVIDER 콜백됨");
+
+                    //현재의 내 위치 얻어오기
+                    double lat = location.getLatitude();
+                    double lon = location.getLongitude();
+
+                    LatLng point = new LatLng(lat, lon);   //LatLng은 위도와 경도 위치값을 저장하는 벡터 자료형 클래스임.
+
+                    //지도를 바라보는 카메라 정보(위치, 줌) 설정
+                    cu = CameraUpdateFactory.newLatLngZoom(point, 15.0f);  //2번째 매개변수는 줌 배율.
+
+                    //구글맵 객체에 카메라 정보(위치, 줌) 설정하기.
+                    //즉, 카메라의 위치와 줌값으로 구글맵이 animate된다.
+                    //gmap.animateCamera(cu);
+
+                    //아이콘으로 위치 표시하기.
+                    if (gmap != null) {
+                        //이미 위험권한에 대한 작업처리를 완료하였으므로 아래의 빨간줄은 그냥 무시하면 됨.
+                        gmap.setMyLocationEnabled(true);   //구글맵 자체의 기능으로서, 현재 내 위치에 아이콘 표시를 해준다.
                     }
+
                 }
 
                 @Override
@@ -226,13 +248,67 @@ public class MapActivity extends AppCompatActivity implements GoogleMap.InfoWind
                 }
             });
 
-        } else {
-            Toast.makeText(MapActivity.this, "사용자로 부터 ACCESS_FINE_LOCATION 권한 승인을 받지 못함."
-                    , Toast.LENGTH_LONG).show();
-            //구글맵 자체의 기능으로서, 지도 우측상단에 표적 아이콘이 나타나지 않는다.
-            //따라서, 표적 아이콘을 클릭할수 없으므로 현재의 내 위치로 이동할수 없게된다.
+
+
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0.0f, new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+
+                    Log.d("Hello", "GPS PROVIDER 콜백됨");
+
+                    //현재의 내 위치 얻어오기
+                    double lat = location.getLatitude();
+                    double lon = location.getLongitude();
+
+                    LatLng point = new LatLng(lat, lon);   //LatLng은 위도와 경도 위치값을 저장하는 벡터 자료형 클래스임.
+
+                    //지도를 바라보는 카메라 정보(위치, 줌) 설정
+                    cu = CameraUpdateFactory.newLatLngZoom(point, 15.0f);  //2번째 매개변수는 줌 배율.
+
+                    //구글맵 객체에 카메라 정보(위치, 줌) 설정하기.
+                    //즉, 카메라의 위치와 줌값으로 구글맵이 animate된다.
+                    //gmap.animateCamera(cu);
+
+                    //아이콘으로 위치 표시하기.
+                    if (gmap != null) {
+                        //이미 위험권한에 대한 작업처리를 완료하였으므로 아래의 빨간줄은 그냥 무시하면 됨.
+                        gmap.setMyLocationEnabled(true);   //구글맵 자체의 기능으로서, 현재 내 위치에 아이콘 표시를 해준다.
+                    }
+
+                }
+
+                @Override
+                public void onStatusChanged(String provider, int status, Bundle extras) {
+
+                }
+
+                @Override
+                public void onProviderEnabled(String provider) {
+
+                }
+
+                @Override
+                public void onProviderDisabled(String provider) {
+
+                }
+            });
         }
 
+        //버튼 클릭시 현재의 내위치로 이동하기.
+        bt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(perm == PackageManager.PERMISSION_GRANTED) {
+                    Log.d("hihi", gmap + ", " + cu);
+                    if(gmap != null && cu != null) {
+                        gmap.animateCamera(cu);
+                    }
+                } else {
+                    Toast.makeText(MapActivity.this, "권한을 승인하지 않았으므로 내위치로 이동할수 없음."
+                            , Toast.LENGTH_LONG).show();
+                }
+            }
+        });
 
 
     }
